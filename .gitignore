@@ -1,0 +1,27 @@
+﻿# Node dependencies
+node_modules/
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+frontend/dist/
+backend/dist/
+coverage/
+
+# TypeScript artifacts
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Prisma
+backend/prisma/migrations/*.lock
+
+# Local tooling
+.DS_Store
+.vscode/
+.idea/
