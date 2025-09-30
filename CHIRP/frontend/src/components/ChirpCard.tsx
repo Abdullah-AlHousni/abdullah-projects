@@ -1,4 +1,5 @@
-﻿import { useState } from "react";
+﻿import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import {
   useLikeChirpMutation,
   useRechirpChirpMutation,
@@ -16,13 +17,21 @@ const formatTimestamp = (iso: string) => new Date(iso).toLocaleString();
 
 export const ChirpCard = ({ chirp }: ChirpCardProps) => {
   const [showComments, setShowComments] = useState(false);
-  const [liked, setLiked] = useState(false);
-  const [rechirped, setRechirped] = useState(false);
+  const [liked, setLiked] = useState(Boolean(chirp.viewerHasLiked));
+  const [rechirped, setRechirped] = useState(Boolean(chirp.viewerHasRechirped));
 
   const likeMutation = useLikeChirpMutation();
   const unlikeMutation = useUnlikeChirpMutation();
   const rechirpMutation = useRechirpChirpMutation();
   const undoRechirpMutation = useUndoRechirpMutation();
+
+  useEffect(() => {
+    setLiked(Boolean(chirp.viewerHasLiked));
+  }, [chirp.viewerHasLiked]);
+
+  useEffect(() => {
+    setRechirped(Boolean(chirp.viewerHasRechirped));
+  }, [chirp.viewerHasRechirped]);
 
   const handleLikeClick = async () => {
     try {
@@ -56,7 +65,12 @@ export const ChirpCard = ({ chirp }: ChirpCardProps) => {
     <article className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4 shadow-sm">
       <header className="flex items-start justify-between text-sm text-slate-400">
         <div>
-          <p className="font-semibold text-slate-100">@{chirp.author.username}</p>
+          <Link
+            to={`/profile/${chirp.author.username}`}
+            className="font-semibold text-primary hover:underline"
+          >
+            @{chirp.author.username}
+          </Link>
           {chirp.author.bio && <p className="text-xs text-slate-500">{chirp.author.bio}</p>}
         </div>
         <time dateTime={chirp.createdAt}>{formatTimestamp(chirp.createdAt)}</time>

@@ -18,6 +18,8 @@ export interface Chirp {
   createdAt: string;
   author: Pick<User, "id" | "username" | "bio">;
   _count: ChirpCounts;
+  viewerHasLiked?: boolean;
+  viewerHasRechirped?: boolean;
 }
 
 export interface Comment {

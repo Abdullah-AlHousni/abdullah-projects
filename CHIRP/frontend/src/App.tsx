@@ -24,14 +24,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="profile/:username"
-          element={
-            <ProtectedRoute>
-              <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="profile/:username" element={<ProfilePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
