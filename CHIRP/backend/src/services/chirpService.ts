@@ -3,8 +3,6 @@ import prisma from "../config/prisma";
 
 const chirpInputSchema = z.object({
   content: z.string().min(1).max(280),
-  mediaUrl: z.string().url().optional(),
-  mediaType: z.enum(["image", "gif", "video"]).optional(),
 });
 
 export const createChirp = async (userId: string, input: z.infer<typeof chirpInputSchema>) => {
@@ -13,8 +11,6 @@ export const createChirp = async (userId: string, input: z.infer<typeof chirpInp
   const chirp = await prisma.chirp.create({
     data: {
       content: data.content,
-      mediaUrl: data.mediaUrl,
-      mediaType: data.mediaType,
       authorId: userId,
     },
     include: {

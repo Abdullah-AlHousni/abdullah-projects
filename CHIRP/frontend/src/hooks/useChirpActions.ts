@@ -3,8 +3,8 @@ import {
   commentOnChirp,
   createChirp,
   likeChirp,
-  retweetChirp,
-  undoRetweet,
+  rechirpChirp,
+  undoRechirp,
   unlikeChirp,
 } from "../api/chirps";
 import type { CreateChirpPayload } from "../api/chirps";
@@ -39,20 +39,20 @@ export const useUnlikeChirpMutation = () => {
   });
 };
 
-export const useRetweetChirpMutation = () => {
+export const useRechirpChirpMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (chirpId: string) => retweetChirp(chirpId),
+    mutationFn: (chirpId: string) => rechirpChirp(chirpId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["feed"] });
     },
   });
 };
 
-export const useUndoRetweetMutation = () => {
+export const useUndoRechirpMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (chirpId: string) => undoRetweet(chirpId),
+    mutationFn: (chirpId: string) => undoRechirp(chirpId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["feed"] });
     },

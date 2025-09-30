@@ -1,4 +1,4 @@
-﻿generator client {
+generator client {
   provider = "prisma-client-js"
 }
 
@@ -24,8 +24,6 @@ model User {
 model Chirp {
   id        String    @id @default(cuid())
   content   String    @db.VarChar(280)
-  mediaUrl  String?
-  mediaType String?
   author    User      @relation(fields: [authorId], references: [id])
   authorId  String
   likes     Like[]

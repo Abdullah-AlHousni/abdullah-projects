@@ -1,12 +1,10 @@
-﻿import { useRef, useState } from "react";
+﻿import { useState } from "react";
 import { useCreateChirpMutation } from "../hooks/useChirpActions";
 
 const MAX_LENGTH = 280;
 
 export const ChirpComposer = () => {
   const [content, setContent] = useState("");
-  const [media, setMedia] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const mutation = useCreateChirpMutation();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -16,12 +14,8 @@ export const ChirpComposer = () => {
     }
 
     try {
-      await mutation.mutateAsync({ content, media });
+      await mutation.mutateAsync({ content });
       setContent("");
-      setMedia(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
     } catch (error) {
       console.error("Failed to create chirp", error);
     }
@@ -40,16 +34,6 @@ export const ChirpComposer = () => {
         className="h-28 w-full resize-none rounded-md border border-slate-800 bg-slate-950/60 p-3 text-slate-100 focus:border-primary focus:outline-none"
       />
       <div className="mt-3 flex items-center justify-between text-sm text-slate-400">
-        <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-slate-700 px-3 py-2 hover:border-primary">
-          <span>Attach media</span>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/*"
-            className="hidden"
-            onChange={(event) => setMedia(event.target.files?.[0] ?? null)}
-          />
-        </label>
         <span>
           {content.length}/{MAX_LENGTH}
         </span>

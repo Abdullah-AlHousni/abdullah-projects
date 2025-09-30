@@ -16,6 +16,12 @@ const initialLogin: LoginPayload = {
   password: "",
 };
 
+const credentialGuidelines = [
+  "Use a valid email address (we'll use it for login).",
+  "Pick a unique username between 3 and 24 characters (letters, numbers, underscores).",
+  "Password must be at least 6 characters.",
+];
+
 const AuthPage = () => {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [signupForm, setSignupForm] = useState(initialSignup);
@@ -61,6 +67,14 @@ const AuthPage = () => {
           </p>
         </header>
 
+        {mode === "signup" && (
+          <ul className="space-y-1 rounded-md border border-slate-700 bg-slate-900/80 p-3 text-left text-xs text-slate-300">
+            {credentialGuidelines.map((tip) => (
+              <li key={tip}>• {tip}</li>
+            ))}
+          </ul>
+        )}
+
         {mode === "signup" ? (
           <form onSubmit={handleSignupSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -83,6 +97,8 @@ const AuthPage = () => {
               <input
                 id="signup-username"
                 required
+                minLength={3}
+                maxLength={24}
                 value={signupForm.username}
                 onChange={(event) => setSignupForm((prev) => ({ ...prev, username: event.target.value }))}
                 className="w-full rounded-md border border-slate-700 bg-slate-950/70 px-3 py-2 focus:border-primary focus:outline-none"
@@ -96,6 +112,7 @@ const AuthPage = () => {
                 id="signup-password"
                 type="password"
                 required
+                minLength={6}
                 value={signupForm.password}
                 onChange={(event) => setSignupForm((prev) => ({ ...prev, password: event.target.value }))}
                 className="w-full rounded-md border border-slate-700 bg-slate-950/70 px-3 py-2 focus:border-primary focus:outline-none"
@@ -113,7 +130,7 @@ const AuthPage = () => {
               />
             </div>
             {signupMutation.isError && (
-              <p className="text-sm text-red-400">Unable to sign up. Please try again.</p>
+              <p className="text-sm text-red-400">Unable to sign up. Please check the requirements and try again.</p>
             )}
             <button
               type="submit"

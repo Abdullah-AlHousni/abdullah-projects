@@ -75,7 +75,7 @@ export const commentOnChirp = async (
   return comment;
 };
 
-export const retweetChirp = async (userId: string, chirpId: string) => {
+export const rechirpChirp = async (userId: string, chirpId: string) => {
   await ensureChirpExists(chirpId);
 
   await prisma.retweet.upsert({
@@ -92,11 +92,11 @@ export const retweetChirp = async (userId: string, chirpId: string) => {
     },
   });
 
-  const retweetCount = await prisma.retweet.count({ where: { chirpId } });
-  return { retweetCount };
+  const rechirpCount = await prisma.retweet.count({ where: { chirpId } });
+  return { rechirpCount };
 };
 
-export const undoRetweet = async (userId: string, chirpId: string) => {
+export const undoRechirp = async (userId: string, chirpId: string) => {
   await ensureChirpExists(chirpId);
 
   await prisma.retweet.deleteMany({
@@ -106,8 +106,8 @@ export const undoRetweet = async (userId: string, chirpId: string) => {
     },
   });
 
-  const retweetCount = await prisma.retweet.count({ where: { chirpId } });
-  return { retweetCount };
+  const rechirpCount = await prisma.retweet.count({ where: { chirpId } });
+  return { rechirpCount };
 };
 
 export const getCommentsForChirp = async (chirpId: string) => {

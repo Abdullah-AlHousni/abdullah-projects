@@ -4,8 +4,8 @@ import {
   commentOnChirp,
   getCommentsForChirp,
   likeChirp,
-  retweetChirp,
-  undoRetweet,
+  rechirpChirp,
+  undoRechirp,
   unlikeChirp,
 } from "../services/engagementService";
 
@@ -58,26 +58,26 @@ export const getCommentsHandler = async (req: AuthenticatedRequest, res: Respons
   }
 };
 
-export const retweetChirpHandler = async (req: AuthenticatedRequest, res: Response) => {
+export const rechirpChirpHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const { retweetCount } = await retweetChirp(req.user.id, req.params.chirpId);
-    res.json({ retweetCount });
+    const { rechirpCount } = await rechirpChirp(req.user.id, req.params.chirpId);
+    res.json({ rechirpCount });
   } catch (error) {
     const status = (error as Error & { status?: number }).status ?? 500;
     res.status(status).json({ message: (error as Error).message });
   }
 };
 
-export const undoRetweetHandler = async (req: AuthenticatedRequest, res: Response) => {
+export const undoRechirpHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const { retweetCount } = await undoRetweet(req.user.id, req.params.chirpId);
-    res.json({ retweetCount });
+    const { rechirpCount } = await undoRechirp(req.user.id, req.params.chirpId);
+    res.json({ rechirpCount });
   } catch (error) {
     const status = (error as Error & { status?: number }).status ?? 500;
     res.status(status).json({ message: (error as Error).message });

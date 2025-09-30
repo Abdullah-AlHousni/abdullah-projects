@@ -3,8 +3,8 @@ import {
   commentChirpHandler,
   getCommentsHandler,
   likeChirpHandler,
-  retweetChirpHandler,
-  undoRetweetHandler,
+  rechirpChirpHandler,
+  undoRechirpHandler,
   unlikeChirpHandler,
 } from "../controllers/engagementController";
 import { authenticate } from "../middleware/authMiddleware";
@@ -15,7 +15,7 @@ router.post("/chirps/:chirpId/like", authenticate, likeChirpHandler);
 router.delete("/chirps/:chirpId/like", authenticate, unlikeChirpHandler);
 router.post("/chirps/:chirpId/comments", authenticate, commentChirpHandler);
 router.get("/chirps/:chirpId/comments", authenticate, getCommentsHandler);
-router.post("/chirps/:chirpId/retweet", authenticate, retweetChirpHandler);
-router.delete("/chirps/:chirpId/retweet", authenticate, undoRetweetHandler);
+router.post("/chirps/:chirpId/rechirp", authenticate, rechirpChirpHandler);
+router.delete("/chirps/:chirpId/rechirp", authenticate, undoRechirpHandler);
 
 export default router;

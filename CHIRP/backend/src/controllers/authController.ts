@@ -8,6 +8,7 @@ export const signup = async (req: Request, res: Response) => {
     res.status(201).json(result);
   } catch (error) {
     const status = (error as Error & { status?: number }).status ?? 500;
+    console.error("Signup error", error);
     res.status(status).json({ message: (error as Error).message });
   }
 };

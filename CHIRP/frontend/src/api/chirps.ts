@@ -3,19 +3,10 @@ import type { Chirp, Comment, Profile } from "../types/api";
 
 export interface CreateChirpPayload {
   content: string;
-  media?: File | null;
 }
 
-export const createChirp = async ({ content, media }: CreateChirpPayload) => {
-  const formData = new FormData();
-  formData.append("content", content);
-  if (media) {
-    formData.append("media", media);
-  }
-
-  const response = await apiClient.post<{ chirp: Chirp }>("/chirps", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+export const createChirp = async ({ content }: CreateChirpPayload) => {
+  const response = await apiClient.post<{ chirp: Chirp }>("/chirps", { content });
   return response.data.chirp;
 };
 
@@ -51,14 +42,14 @@ export const unlikeChirp = async (chirpId: string) => {
   return response.data.likeCount;
 };
 
-export const retweetChirp = async (chirpId: string) => {
-  const response = await apiClient.post<{ retweetCount: number }>(`/engagements/chirps/${chirpId}/retweet`);
-  return response.data.retweetCount;
+export const rechirpChirp = async (chirpId: string) => {
+  const response = await apiClient.post<{ rechirpCount: number }>(`/engagements/chirps/${chirpId}/rechirp`);
+  return response.data.rechirpCount;
 };
 
-export const undoRetweet = async (chirpId: string) => {
-  const response = await apiClient.delete<{ retweetCount: number }>(`/engagements/chirps/${chirpId}/retweet`);
-  return response.data.retweetCount;
+export const undoRechirp = async (chirpId: string) => {
+  const response = await apiClient.delete<{ rechirpCount: number }>(`/engagements/chirps/${chirpId}/rechirp`);
+  return response.data.rechirpCount;
 };
 
 export const commentOnChirp = async (chirpId: string, content: string) => {

@@ -1,8 +1,8 @@
 ﻿import { useState } from "react";
 import {
   useLikeChirpMutation,
-  useRetweetChirpMutation,
-  useUndoRetweetMutation,
+  useRechirpChirpMutation,
+  useUndoRechirpMutation,
   useUnlikeChirpMutation,
 } from "../hooks/useChirpActions";
 import type { Chirp } from "../types/api";
@@ -17,12 +17,12 @@ const formatTimestamp = (iso: string) => new Date(iso).toLocaleString();
 export const ChirpCard = ({ chirp }: ChirpCardProps) => {
   const [showComments, setShowComments] = useState(false);
   const [liked, setLiked] = useState(false);
-  const [retweeted, setRetweeted] = useState(false);
+  const [rechirped, setRechirped] = useState(false);
 
   const likeMutation = useLikeChirpMutation();
   const unlikeMutation = useUnlikeChirpMutation();
-  const retweetMutation = useRetweetChirpMutation();
-  const undoRetweetMutation = useUndoRetweetMutation();
+  const rechirpMutation = useRechirpChirpMutation();
+  const undoRechirpMutation = useUndoRechirpMutation();
 
   const handleLikeClick = async () => {
     try {
@@ -38,17 +38,17 @@ export const ChirpCard = ({ chirp }: ChirpCardProps) => {
     }
   };
 
-  const handleRetweetClick = async () => {
+  const handleRechirpClick = async () => {
     try {
-      if (retweeted) {
-        await undoRetweetMutation.mutateAsync(chirp.id);
-        setRetweeted(false);
+      if (rechirped) {
+        await undoRechirpMutation.mutateAsync(chirp.id);
+        setRechirped(false);
       } else {
-        await retweetMutation.mutateAsync(chirp.id);
-        setRetweeted(true);
+        await rechirpMutation.mutateAsync(chirp.id);
+        setRechirped(true);
       }
     } catch (error) {
-      console.error("Failed to toggle retweet", error);
+      console.error("Failed to toggle rechirp", error);
     }
   };
 
@@ -62,15 +62,6 @@ export const ChirpCard = ({ chirp }: ChirpCardProps) => {
         <time dateTime={chirp.createdAt}>{formatTimestamp(chirp.createdAt)}</time>
       </header>
       <p className="whitespace-pre-wrap text-slate-100">{chirp.content}</p>
-      {chirp.mediaUrl && (
-        <div className="overflow-hidden rounded-lg border border-slate-800">
-          {chirp.mediaType === "video" ? (
-            <video src={chirp.mediaUrl} controls className="h-64 w-full object-cover" />
-          ) : (
-            <img src={chirp.mediaUrl} alt="chirp media" className="w-full object-cover" />
-          )}
-        </div>
-      )}
       <footer className="flex items-center gap-4 text-sm">
         <button
           onClick={handleLikeClick}
@@ -87,10 +78,10 @@ export const ChirpCard = ({ chirp }: ChirpCardProps) => {
           <span>{chirp._count.comments}</span>
         </button>
         <button
-          onClick={handleRetweetClick}
-          className={`flex items-center gap-1 rounded-md px-3 py-2 ${retweeted ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-800 text-slate-200"}`}
+          onClick={handleRechirpClick}
+          className={`flex items-center gap-1 rounded-md px-3 py-2 ${rechirped ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-800 text-slate-200"}`}
         >
-          <span>Retweet</span>
+          <span>Rechirp</span>
           <span>{chirp._count.retweets}</span>
         </button>
       </footer>
