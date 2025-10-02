@@ -81,7 +81,7 @@ export const getFeed = async (limit: number, viewerId?: string) => {
     include: buildChirpInclude(viewerId),
   });
 
-  return chirps.map((chirp) => formatChirp(chirp, viewerId));
+  return chirps.map((chirp: any) => formatChirp(chirp, viewerId));
 };
 
 export const getChirpById = async (chirpId: string, viewerId?: string) => {
@@ -135,6 +135,6 @@ export const getUserChirps = async (username: string, viewerId?: string) => {
 
   return {
     ...user,
-    chirps: user.chirps.map((chirp) => formatChirp(chirp, viewerId)),
+    chirps: user.chirps.map((chirp: any) => formatChirp(chirp, viewerId)),
   };
 };

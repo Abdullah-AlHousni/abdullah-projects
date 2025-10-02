@@ -1,5 +1,17 @@
 ﻿import prisma from "../config/prisma";
 
+const formatProfileChirp = (chirp: any, viewerId?: string) => {
+  const viewerHasLiked = viewerId ? Boolean(chirp?.likes?.length) : false;
+  const viewerHasRechirped = viewerId ? Boolean(chirp?.retweets?.length) : false;
+  const { likes, retweets, ...rest } = chirp ?? {};
+
+  return {
+    ...rest,
+    viewerHasLiked,
+    viewerHasRechirped,
+  };
+};
+
 export const getProfileByUsername = async (username: string, viewerId?: string) => {
   const profile = await prisma.user.findUnique({
     where: { username },
@@ -48,19 +60,6 @@ export const getProfileByUsername = async (username: string, viewerId?: string) 
 
   return {
     ...profile,
-    chirps: profile.chirps.map((chirp) => {
-      const raw = chirp as unknown as {
-        likes?: Array<{ id: string }>;
-        retweets?: Array<{ id: string }>;
-      } & Record<string, unknown>;
-
-      const { likes, retweets, ...rest } = raw;
-
-      return {
-        ...rest,
-        viewerHasLiked: viewerId ? Boolean(likes?.length) : false,
-        viewerHasRechirped: viewerId ? Boolean(retweets?.length) : false,
-      };
-    }),
+    chirps: profile.chirps.map((chirp: any) => formatProfileChirp(chirp, viewerId)),
   };
 };
