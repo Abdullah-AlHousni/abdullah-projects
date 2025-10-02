@@ -49,20 +49,17 @@ export const getProfileByUsername = async (username: string, viewerId?: string) 
   return {
     ...profile,
     chirps: profile.chirps.map((chirp) => {
-      const viewerHasLiked = viewerId ? Boolean((chirp as { likes?: Array<{ id: string }> }).likes?.length) : false;
-      const viewerHasRechirped = viewerId
-        ? Boolean((chirp as { retweets?: Array<{ id: string }> }).retweets?.length)
-        : false;
-
-      const { likes, retweets, ...rest } = chirp as typeof chirp & {
+      const raw = chirp as unknown as {
         likes?: Array<{ id: string }>;
         retweets?: Array<{ id: string }>;
-      };
+      } & Record<string, unknown>;
+
+      const { likes, retweets, ...rest } = raw;
 
       return {
         ...rest,
-        viewerHasLiked,
-        viewerHasRechirped,
+        viewerHasLiked: viewerId ? Boolean(likes?.length) : false,
+        viewerHasRechirped: viewerId ? Boolean(retweets?.length) : false,
       };
     }),
   };

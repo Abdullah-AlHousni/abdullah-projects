@@ -1,5 +1,4 @@
-﻿import { Prisma } from "@prisma/client";
-import { z } from "zod";
+﻿import { z } from "zod";
 import prisma from "../config/prisma";
 
 const chirpInputSchema = z
@@ -18,20 +17,7 @@ const chirpInputSchema = z
     },
   );
 
-const toNumberOrDefault = (value: string | string[] | undefined, fallback: number) => {
-  if (Array.isArray(value)) {
-    return Number.parseInt(value[0] ?? "", 10) || fallback;
-  }
-
-  if (typeof value === "string") {
-    const parsed = Number.parseInt(value, 10);
-    return Number.isFinite(parsed) ? parsed : fallback;
-  }
-
-  return fallback;
-};
-
-const buildChirpInclude = (viewerId?: string): Prisma.ChirpInclude => ({
+const buildChirpInclude = (viewerId?: string) => ({
   author: {
     select: {
       id: true,
@@ -60,14 +46,10 @@ const buildChirpInclude = (viewerId?: string): Prisma.ChirpInclude => ({
     : {}),
 });
 
-const formatChirp = <T extends {
-  likes?: Array<{ id: string }>;
-  retweets?: Array<{ id: string }>;
-}>(chirp: T, viewerId?: string) => {
-  const viewerHasLiked = viewerId ? Boolean(chirp.likes?.length) : false;
-  const viewerHasRechirped = viewerId ? Boolean(chirp.retweets?.length) : false;
-
-  const { likes, retweets, ...rest } = chirp;
+const formatChirp = (chirp: any, viewerId?: string) => {
+  const viewerHasLiked = viewerId ? Boolean(chirp?.likes?.length) : false;
+  const viewerHasRechirped = viewerId ? Boolean(chirp?.retweets?.length) : false;
+  const { likes, retweets, ...rest } = chirp ?? {};
 
   return {
     ...rest,
@@ -92,12 +74,10 @@ export const createChirp = async (userId: string, input: z.infer<typeof chirpInp
   return formatChirp(chirp, userId);
 };
 
-export const getFeed = async (limit: string | string[] | undefined, viewerId?: string) => {
-  const parsedLimit = toNumberOrDefault(limit, 20);
-
+export const getFeed = async (limit: number, viewerId?: string) => {
   const chirps = await prisma.chirp.findMany({
     orderBy: { createdAt: "desc" },
-    take: parsedLimit,
+    take: limit,
     include: buildChirpInclude(viewerId),
   });
 
