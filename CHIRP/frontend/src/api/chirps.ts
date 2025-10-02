@@ -3,10 +3,16 @@ import type { Chirp, Comment, Profile } from "../types/api";
 
 export interface CreateChirpPayload {
   content: string;
+  mediaUrl?: string | null;
+  mediaType?: "image" | "video" | null;
 }
 
-export const createChirp = async ({ content }: CreateChirpPayload) => {
-  const response = await apiClient.post<{ chirp: Chirp }>("/chirps", { content });
+export const createChirp = async ({ content, mediaUrl, mediaType }: CreateChirpPayload) => {
+  const response = await apiClient.post<{ chirp: Chirp }>("/chirps", {
+    content,
+    mediaUrl: mediaUrl ?? undefined,
+    mediaType: mediaType ?? undefined,
+  });
   return response.data.chirp;
 };
 

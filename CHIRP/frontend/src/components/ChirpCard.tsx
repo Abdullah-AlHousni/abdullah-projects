@@ -76,6 +76,23 @@ export const ChirpCard = ({ chirp }: ChirpCardProps) => {
         <time dateTime={chirp.createdAt}>{formatTimestamp(chirp.createdAt)}</time>
       </header>
       <p className="whitespace-pre-wrap text-slate-100">{chirp.content}</p>
+      {chirp.mediaUrl && (
+        <div className="overflow-hidden rounded-lg border border-slate-800">
+          {chirp.mediaType === "video" ? (
+            <video
+              controls
+              src={chirp.mediaUrl}
+              className="max-h-80 w-full bg-black object-contain"
+            />
+          ) : (
+            <img
+              src={chirp.mediaUrl}
+              alt="Chirp attachment"
+              className="w-full object-cover"
+            />
+          )}
+        </div>
+      )}
       <footer className="flex items-center gap-4 text-sm">
         <button
           onClick={handleLikeClick}

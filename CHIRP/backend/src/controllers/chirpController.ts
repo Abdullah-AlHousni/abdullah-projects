@@ -8,8 +8,16 @@ export const createChirpHandler = async (req: AuthenticatedRequest, res: Respons
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    const { content, mediaUrl, mediaType } = req.body as {
+      content?: string;
+      mediaUrl?: string;
+      mediaType?: "image" | "video";
+    };
+
     const chirp = await createChirp(req.user.id, {
-      content: req.body.content,
+      content: content ?? "",
+      mediaUrl,
+      mediaType,
     });
 
     res.status(201).json({ chirp });

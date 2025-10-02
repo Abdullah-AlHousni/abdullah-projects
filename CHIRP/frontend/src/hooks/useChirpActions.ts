@@ -60,9 +60,26 @@ export const useCreateChirpMutation = () => {
         viewerHasLiked: false,
         viewerHasRechirped: false,
       };
+
       queryClient.setQueriesData<Chirp[]>({ queryKey: ["feed"] }, (old) =>
         old ? [enriched, ...old] : [enriched],
       );
+
+      queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ["profile"] })
+        .forEach(({ queryKey }) => {
+          queryClient.setQueryData<Profile | undefined>(queryKey, (profile) => {
+            if (!profile) return profile;
+            if (profile.username !== enriched.author.username) {
+              return profile;
+            }
+            return {
+              ...profile,
+              chirps: [enriched, ...profile.chirps],
+            };
+          });
+        });
     },
   });
 };

@@ -1,12 +1,12 @@
 ﻿# Chirp MVP
 
-Chirp is a social media MVP where users can sign up, share short 280-character messages, and engage with each other through likes, comments, and rechirps. The project is split into a TypeScript Express backend (PostgreSQL + Prisma) and a React + Tailwind frontend powered by React Query.
+Chirp is a social media MVP where users can sign up, share 280-character updates, attach optimized media, and engage with likes, comments, and rechirps (retweets). The stack is a TypeScript Express API (PostgreSQL + Prisma + AWS S3) paired with a React + Tailwind frontend powered by React Query.
 
-## Repo Layout
+## Repository Layout
 
 ```
 CHIRP/
-├─ backend/        # Express API + Prisma models
+├─ backend/        # Express API, Prisma schema, media pipeline (Sharp + FFmpeg + S3)
 ├─ frontend/       # React app with Tailwind, React Router, React Query
 └─ README.md       # Project guide
 ```
@@ -15,135 +15,168 @@ CHIRP/
 
 - Node.js 20+
 - npm 10+
-- PostgreSQL 14+ (local install or managed provider like Supabase/Railway)
+- PostgreSQL 14+ (local install or managed instance)
+- AWS account with an S3 bucket (Object Ownership: Bucket owner enforced, or equivalent policy)
+
+---
 
 ## Backend Setup (`/backend`)
 
-1. Install dependencies:
+1. **Install dependencies**
    ```bash
    cd backend
    npm install
    ```
-2. Copy the example environment file and update values:
+
+2. **Configure environment variables**
    ```bash
    cp .env.example .env
    ```
-   Required keys:
-   - `DATABASE_URL` – PostgreSQL connection string (Supabase/Railway/local)
-   - `JWT_SECRET` – strong secret for signing tokens
+   Update the new `.env` with:
+   - `DATABASE_URL` – PostgreSQL connection string
+   - `JWT_SECRET` – long random string
    - `FRONTEND_ORIGIN` – e.g. `http://localhost:5173`
-3. Generate the Prisma client and run the first migration:
+   - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` – IAM credentials with S3 write access
+   - `AWS_REGION` – e.g. `us-east-1`
+   - `AWS_BUCKET_NAME` – bucket for media (`chirp-media` by default)
+
+   > **Note:** If your bucket enforces "Bucket owner enforced" object ownership (recommended), set a bucket policy that grants public `s3:GetObject` and allows the IAM principal to `s3:PutObject`. Object ACLs are not used.
+
+3. **Apply database schema**
    ```bash
-   npx prisma migrate dev --name init
+   npx prisma migrate dev --name add-media-fields
    ```
-4. Start the development server:
+   (Use a different migration name if you already ran earlier migrations.)
+
+4. **Run the API**
    ```bash
    npm run dev
    ```
-   The API listens on `http://localhost:4000` and exposes a `/health` probe.
+   The server listens on `http://localhost:4000` with a `/health` probe.
 
-### Available API Routes
+### Media Pipeline Details
 
-| Method | Route                                      | Description                     |
-| ------ | ------------------------------------------ | ------------------------------- |
-| POST   | `/auth/signup`                             | Create a new user account       |
-| POST   | `/auth/login`                              | Exchange credentials for a JWT  |
-| GET    | `/auth/me`                                 | Fetch the authenticated user    |
-| POST   | `/chirps`                                  | Publish a chirp (text only)     |
-| GET    | `/chirps/feed`                             | Latest chirps (reverse chrono)  |
-| GET    | `/chirps/:chirpId`                         | Single chirp with comments      |
-| GET    | `/chirps/user/:username`                   | Chirps authored by a user       |
-| POST   | `/engagements/chirps/:id/like`             | Like a chirp                    |
-| DELETE | `/engagements/chirps/:id/like`             | Remove a like                   |
-| POST   | `/engagements/chirps/:id/comments`         | Comment on a chirp              |
-| GET    | `/engagements/chirps/:id/comments`         | List comments                   |
-| POST   | `/engagements/chirps/:id/rechirp`          | Rechirp a chirp                 |
-| DELETE | `/engagements/chirps/:id/rechirp`          | Undo a rechirp                  |
-| GET    | `/profiles/:username`                      | Public profile with chirps      |
+- Uploads hit `POST /upload` (authenticated).
+- Files are received via Multer (memory storage) with a strict 20 MB size cap.
+- Images are resized to max 1080px width and converted to WebP (~70% quality) using Sharp.
+- Videos are transcoded to MP4 (H.264 + AAC, max 720p) via FFmpeg with fast-start enabled.
+- Optimized buffers are stored in S3 with unique keys (`chirps/<timestamp>-<uuid>.<ext>`).
+- The S3 URL and media type are returned to the client and saved on the `Chirp` record (`mediaUrl`, `mediaType`).
+
+### Key API Routes
+
+| Method | Route                                      | Description                                          |
+| ------ | ------------------------------------------ | ---------------------------------------------------- |
+| POST   | `/auth/signup`                             | Create a new user account                            |
+| POST   | `/auth/login`                              | Exchange credentials for a JWT                       |
+| GET    | `/auth/me`                                 | Fetch the authenticated user                         |
+| POST   | `/upload`                                  | Upload/optimise media → returns `{ url, mediaType }` |
+| POST   | `/chirps`                                  | Publish a chirp with optional `mediaUrl/mediaType`   |
+| GET    | `/chirps/feed`                             | Latest chirps (reverse chronological)                |
+| GET    | `/chirps/:chirpId`                         | Single chirp with comments                           |
+| GET    | `/chirps/user/:username`                   | Chirps authored by a user                            |
+| POST   | `/engagements/chirps/:id/like`             | Like a chirp                                         |
+| DELETE | `/engagements/chirps/:id/like`             | Remove a like                                        |
+| POST   | `/engagements/chirps/:id/comments`         | Comment on a chirp                                   |
+| GET    | `/engagements/chirps/:id/comments`         | List comments (auth required)                        |
+| POST   | `/engagements/chirps/:id/rechirp`          | Rechirp a chirp                                      |
+| DELETE | `/engagements/chirps/:id/rechirp`          | Undo a rechirp                                       |
+| GET    | `/profiles/:username`                      | Public profile with chirps and media                 |
 
 ### Useful Commands
 
-- `npm run dev` – start the development server
-- `npm run build` – emit production build (to `dist/`)
+- `npm run dev` – watch-mode server
+- `npm run build` – produce production build (`dist/`)
 - `npm run start` – run the compiled server
 - `npm run prisma:generate` – regenerate Prisma client
-- `npx prisma studio` – open Prisma Studio to inspect data
+- `npx prisma studio` – inspect data via Prisma Studio
+
+---
 
 ## Frontend Setup (`/frontend`)
 
-1. Install dependencies:
+1. **Install dependencies**
    ```bash
    cd frontend
    npm install
    ```
-2. Copy the env template and set the API origin:
+
+2. **Environment variables**
    ```bash
    cp .env.example .env
    ```
    - `VITE_API_BASE_URL` – usually `http://localhost:4000`
-3. Start Vite:
+
+3. **Run Vite**
    ```bash
    npm run dev
    ```
-   The app runs on `http://localhost:5173`.
+   The SPA is served at `http://localhost:5173`.
 
-The frontend ships with:
-- React Router for auth + profile routing
-- Auth context that stores tokens in `localStorage`
-- React Query hooks for feed/profile/comments
-- Tailwind CSS for styling
-- Components for composing chirps, listing chirps, and commenting
+### Frontend Highlights
 
-## Deployment Guides
+- Protected feed requires login, but profile pages are public.
+- The composer supports image/video selection with live preview and size validation (≤20 MB).
+- On submit the UI uploads media to `/upload`, receives the S3 URL, and posts the chirp with `mediaUrl/mediaType`.
+- Feed/profile cards display media responsively (`<img>` or `<video>`), update counts instantly, and keep engagement highlights in sync via React Query cache updates.
 
-### PostgreSQL (Supabase or Railway)
-1. Create a new project (Supabase: `New Project`, Railway: `Provision PostgreSQL`).
-2. Whitelist your backend host if required.
-3. Grab the connection string and set `DATABASE_URL` in the backend environment.
-4. Run migrations on the managed instance:
+---
+
+## Deployment Notes
+
+### PostgreSQL (Supabase / Railway)
+1. Provision a database and grab the connection string.
+2. Set `DATABASE_URL` in the backend environment.
+3. Deploy migrations:
    ```bash
    cd backend
    npx prisma migrate deploy
    ```
-5. Optionally seed data or use `npx prisma studio --schema prisma/schema.prisma` via a tunnel.
+4. Optionally tunnel into the DB to inspect data with Prisma Studio.
 
-### Backend on Render (Railway is similar)
-1. Push this repo to GitHub.
-2. Create a new **Web Service** on Render and point it to `/backend`.
-3. Build command: `npm install && npm run build`
-4. Start command: `npm run start`
-5. Environment variables:
-   - `DATABASE_URL`
-   - `JWT_SECRET`
-   - `FRONTEND_ORIGIN` (your Vercel URL)
-6. Enable automatic deploys so every push builds and releases.
+### Backend (Render / Railway / AWS ECS, etc.)
+- Build command: `npm install && npm run build`
+- Start command: `npm run start`
+- Required environment variables: `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_ORIGIN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_BUCKET_NAME`
+- Ensure the compute environment has permission to write to S3, and the bucket policy allows public `GetObject` if you need public URLs.
 
-### Frontend on Vercel
-1. Import the repository into Vercel.
-2. Set the root directory to `/frontend`.
-3. Build command: `npm run build`
-4. Output directory: `dist`
-5. Environment variables:
-   - `VITE_API_BASE_URL=https://your-render-backend.onrender.com`
+### Frontend (Vercel)
+- Root directory: `/frontend`
+- Build command: `npm run build`
+- Output directory: `dist`
+- Environment variables: `VITE_API_BASE_URL=https://<backend-domain>`
+
+---
 
 ## Testing Tips
 
-- **Manual API verification:**
-  - Use Postman or Hoppscotch with the routes listed above.
-  - Authenticate once (`/auth/login`) and store the bearer token for subsequent calls.
-- **Local end-to-end pass:**
-  1. Run `npm run dev` in `/backend`.
-  2. Run `npm run dev` in `/frontend`.
-  3. Register a user, post chirps, and confirm likes/comments/rechirps update the feed.
-- **Automated ideas (future work):**
-  - Backend: add Jest + Supertest smoke tests per route.
-  - Frontend: add Vitest + React Testing Library for core flows (auth, composer, feed rendering).
+### Postman / Hoppscotch
+1. Authenticate once with `POST /auth/login` and store the bearer token.
+2. Upload an image via `POST /upload` (form-data field `file`). Response returns the S3 URL.
+3. Post a chirp with `POST /chirps` using JSON:
+   ```json
+   {
+     "content": "Hello Chirp!",
+     "mediaUrl": "https://<bucket>.s3.amazonaws.com/chirps/...",
+     "mediaType": "image"
+   }
+   ```
+4. Verify it appears in `GET /chirps/feed` and `GET /profiles/<username>`.
+
+### Local E2E Smoke Test
+1. Run `npm run dev` in `/backend`.
+2. Run `npm run dev` in `/frontend`.
+3. Create an account, upload an image/video, confirm the preview, post, and ensure the media renders in the feed/profile.
+4. Exercise likes, comments, and rechirps to confirm counters stay in sync when navigating between feed and profile.
+
+---
 
 ## Next Steps / Enhancements
 
-- Add follower relationships and timeline filtering.
-- Extend the feed endpoints to include viewer-specific flags (`viewerHasLiked`, etc.).
-- Wire analytics/observability (e.g., Logflare on Supabase, Render logs).
-- Harden validation and rate limiting for production.
+- Add viewer-specific flags from the API (`viewerHasLiked`, `viewerHasRechirped`) instead of computing on the client.
+- Support animated GIF to MP4 conversion explicitly.
+- Add background jobs for further media optimisation / thumbnailing.
+- Introduce rate limiting and request logging (e.g. pino + AWS CloudWatch).
+- Build automated tests (Jest + Supertest for API, Vitest + RTL for UI).
 
 Happy chirping! 🐦

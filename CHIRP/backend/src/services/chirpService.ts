@@ -1,9 +1,43 @@
 ﻿import { z } from "zod";
 import prisma from "../config/prisma";
 
-const chirpInputSchema = z.object({
-  content: z.string().min(1).max(280),
-});
+const chirpInputSchema = z
+  .object({
+    content: z.string().min(1).max(280),
+    mediaUrl: z.string().url().optional(),
+    mediaType: z.enum(["image", "video"]).optional(),
+  })
+  .refine(
+    (data) =>
+      (!data.mediaUrl && !data.mediaType) ||
+      (Boolean(data.mediaUrl) && Boolean(data.mediaType)),
+    {
+      message: "mediaType is required when mediaUrl is provided",
+      path: ["mediaType"],
+    },
+  );
+
+const chirpSelect = {
+  id: true,
+  content: true,
+  mediaUrl: true,
+  mediaType: true,
+  createdAt: true,
+  author: {
+    select: {
+      id: true,
+      username: true,
+      bio: true,
+    },
+  },
+  _count: {
+    select: {
+      likes: true,
+      comments: true,
+      retweets: true,
+    },
+  },
+} as const;
 
 export const createChirp = async (userId: string, input: z.infer<typeof chirpInputSchema>) => {
   const data = chirpInputSchema.parse(input);
@@ -11,24 +45,11 @@ export const createChirp = async (userId: string, input: z.infer<typeof chirpInp
   const chirp = await prisma.chirp.create({
     data: {
       content: data.content,
+      mediaUrl: data.mediaUrl,
+      mediaType: data.mediaType,
       authorId: userId,
     },
-    include: {
-      author: {
-        select: {
-          id: true,
-          username: true,
-          bio: true,
-        },
-      },
-      _count: {
-        select: {
-          likes: true,
-          comments: true,
-          retweets: true,
-        },
-      },
-    },
+    select: chirpSelect,
   });
 
   return chirp;
@@ -38,22 +59,7 @@ export const getFeed = async (limit = 20) => {
   const chirps = await prisma.chirp.findMany({
     orderBy: { createdAt: "desc" },
     take: limit,
-    include: {
-      author: {
-        select: {
-          id: true,
-          username: true,
-          bio: true,
-        },
-      },
-      _count: {
-        select: {
-          likes: true,
-          comments: true,
-          retweets: true,
-        },
-      },
-    },
+    select: chirpSelect,
   });
 
   return chirps;
@@ -62,14 +68,8 @@ export const getFeed = async (limit = 20) => {
 export const getChirpById = async (chirpId: string) => {
   const chirp = await prisma.chirp.findUnique({
     where: { id: chirpId },
-    include: {
-      author: {
-        select: {
-          id: true,
-          username: true,
-          bio: true,
-        },
-      },
+    select: {
+      ...chirpSelect,
       comments: {
         include: {
           author: {
@@ -80,13 +80,6 @@ export const getChirpById = async (chirpId: string) => {
           },
         },
         orderBy: { createdAt: "desc" },
-      },
-      _count: {
-        select: {
-          likes: true,
-          comments: true,
-          retweets: true,
-        },
       },
     },
   });
@@ -107,18 +100,7 @@ export const getUserChirps = async (username: string) => {
       bio: true,
       chirps: {
         orderBy: { createdAt: "desc" },
-        include: {
-          author: {
-            select: {
-              id: true,
-              username: true,
-              bio: true,
-            },
-          },
-          _count: {
-            select: { likes: true, comments: true, retweets: true },
-          },
-        },
+        select: chirpSelect,
       },
     },
   });

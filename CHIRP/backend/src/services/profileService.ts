@@ -10,7 +10,12 @@ export const getProfileByUsername = async (username: string) => {
       createdAt: true,
       chirps: {
         orderBy: { createdAt: "desc" },
-        include: {
+        select: {
+          id: true,
+          content: true,
+          mediaUrl: true,
+          mediaType: true,
+          createdAt: true,
           author: {
             select: {
               id: true,

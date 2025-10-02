@@ -15,6 +15,8 @@ export interface ChirpCounts {
 export interface Chirp {
   id: string;
   content: string;
+  mediaUrl?: string | null;
+  mediaType?: "image" | "video" | null;
   createdAt: string;
   author: Pick<User, "id" | "username" | "bio">;
   _count: ChirpCounts;

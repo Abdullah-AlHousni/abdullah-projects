@@ -9,6 +9,10 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
   FRONTEND_ORIGIN: z.string().min(1, "FRONTEND_ORIGIN is required"),
+  AWS_ACCESS_KEY_ID: z.string().min(1, "AWS_ACCESS_KEY_ID is required"),
+  AWS_SECRET_ACCESS_KEY: z.string().min(1, "AWS_SECRET_ACCESS_KEY is required"),
+  AWS_REGION: z.string().min(1, "AWS_REGION is required"),
+  AWS_BUCKET_NAME: z.string().min(1, "AWS_BUCKET_NAME is required"),
 });
 
 const parsed = envSchema.safeParse(process.env);
