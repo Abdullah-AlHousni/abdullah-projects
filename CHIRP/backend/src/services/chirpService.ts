@@ -18,6 +18,19 @@ const chirpInputSchema = z
     },
   );
 
+const toNumberOrDefault = (value: string | string[] | undefined, fallback: number) => {
+  if (Array.isArray(value)) {
+    return Number.parseInt(value[0] ?? "", 10) || fallback;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  return fallback;
+};
+
 const buildChirpInclude = (viewerId?: string): Prisma.ChirpInclude => ({
   author: {
     select: {
@@ -79,10 +92,12 @@ export const createChirp = async (userId: string, input: z.infer<typeof chirpInp
   return formatChirp(chirp, userId);
 };
 
-export const getFeed = async (limit = 20, viewerId?: string) => {
+export const getFeed = async (limit: string | string[] | undefined, viewerId?: string) => {
+  const parsedLimit = toNumberOrDefault(limit, 20);
+
   const chirps = await prisma.chirp.findMany({
     orderBy: { createdAt: "desc" },
-    take: limit,
+    take: parsedLimit,
     include: buildChirpInclude(viewerId),
   });
 
@@ -126,11 +141,11 @@ export const getUserChirps = async (username: string, viewerId?: string) => {
       id: true,
       username: true,
       bio: true,
+      createdAt: true,
       chirps: {
         orderBy: { createdAt: "desc" },
         include: buildChirpInclude(viewerId),
       },
-      createdAt: true,
     },
   });
 

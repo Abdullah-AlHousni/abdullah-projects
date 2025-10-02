@@ -31,9 +31,7 @@ export const createChirpHandler = async (req: AuthenticatedRequest, res: Respons
 export const getFeedHandler = async (req: Request, res: Response) => {
   try {
     const viewerId = tryGetViewerId(req.headers.authorization);
-    const limitParam = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
-    const limit = limitParam ? Number.parseInt(limitParam, 10) : 20;
-    const chirps = await getFeed(limit, viewerId);
+    const chirps = await getFeed(req.query.limit, viewerId);
     res.json({ chirps });
   } catch (error) {
     const status = (error as Error & { status?: number }).status ?? 500;
