@@ -1,16 +1,12 @@
-﻿import env from "./config/env";
+﻿import app from "./app";
+import env from "./config/env";
 import prisma from "./config/prisma";
-
-type AppModule = typeof import("./app");
-
-const loadApp = () => import("./app.js") as Promise<AppModule>;
 
 const port = env.PORT;
 
 const start = async () => {
   try {
     await prisma.$connect();
-    const { default: app } = await loadApp();
     app.listen(port, () => {
       console.log(`🚀 Chirp backend ready at http://localhost:${port}`);
     });
