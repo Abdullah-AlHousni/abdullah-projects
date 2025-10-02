@@ -1,4 +1,5 @@
-﻿import { z } from "zod";
+﻿import { Prisma } from "@prisma/client";
+import { z } from "zod";
 import prisma from "../config/prisma";
 
 const chirpInputSchema = z
@@ -17,12 +18,7 @@ const chirpInputSchema = z
     },
   );
 
-const chirpSelect = {
-  id: true,
-  content: true,
-  mediaUrl: true,
-  mediaType: true,
-  createdAt: true,
+const buildChirpInclude = (viewerId?: string): Prisma.ChirpInclude => ({
   author: {
     select: {
       id: true,
@@ -37,7 +33,35 @@ const chirpSelect = {
       retweets: true,
     },
   },
-} as const;
+  ...(viewerId
+    ? {
+        likes: {
+          where: { userId: viewerId },
+          select: { id: true },
+        },
+        retweets: {
+          where: { userId: viewerId },
+          select: { id: true },
+        },
+      }
+    : {}),
+});
+
+const formatChirp = <T extends {
+  likes?: Array<{ id: string }>;
+  retweets?: Array<{ id: string }>;
+}>(chirp: T, viewerId?: string) => {
+  const viewerHasLiked = viewerId ? Boolean(chirp.likes?.length) : false;
+  const viewerHasRechirped = viewerId ? Boolean(chirp.retweets?.length) : false;
+
+  const { likes, retweets, ...rest } = chirp;
+
+  return {
+    ...rest,
+    viewerHasLiked,
+    viewerHasRechirped,
+  };
+};
 
 export const createChirp = async (userId: string, input: z.infer<typeof chirpInputSchema>) => {
   const data = chirpInputSchema.parse(input);
@@ -49,27 +73,27 @@ export const createChirp = async (userId: string, input: z.infer<typeof chirpInp
       mediaType: data.mediaType,
       authorId: userId,
     },
-    select: chirpSelect,
+    include: buildChirpInclude(userId),
   });
 
-  return chirp;
+  return formatChirp(chirp, userId);
 };
 
-export const getFeed = async (limit = 20) => {
+export const getFeed = async (limit = 20, viewerId?: string) => {
   const chirps = await prisma.chirp.findMany({
     orderBy: { createdAt: "desc" },
     take: limit,
-    select: chirpSelect,
+    include: buildChirpInclude(viewerId),
   });
 
-  return chirps;
+  return chirps.map((chirp) => formatChirp(chirp, viewerId));
 };
 
-export const getChirpById = async (chirpId: string) => {
+export const getChirpById = async (chirpId: string, viewerId?: string) => {
   const chirp = await prisma.chirp.findUnique({
     where: { id: chirpId },
-    select: {
-      ...chirpSelect,
+    include: {
+      ...buildChirpInclude(viewerId),
       comments: {
         include: {
           author: {
@@ -88,10 +112,14 @@ export const getChirpById = async (chirpId: string) => {
     throw Object.assign(new Error("Chirp not found"), { status: 404 });
   }
 
-  return chirp;
+  const formatted = formatChirp(chirp, viewerId);
+  return {
+    ...formatted,
+    comments: chirp.comments,
+  };
 };
 
-export const getUserChirps = async (username: string) => {
+export const getUserChirps = async (username: string, viewerId?: string) => {
   const user = await prisma.user.findUnique({
     where: { username },
     select: {
@@ -100,8 +128,9 @@ export const getUserChirps = async (username: string) => {
       bio: true,
       chirps: {
         orderBy: { createdAt: "desc" },
-        select: chirpSelect,
+        include: buildChirpInclude(viewerId),
       },
+      createdAt: true,
     },
   });
 
@@ -109,5 +138,8 @@ export const getUserChirps = async (username: string) => {
     throw Object.assign(new Error("User not found"), { status: 404 });
   }
 
-  return user;
+  return {
+    ...user,
+    chirps: user.chirps.map((chirp) => formatChirp(chirp, viewerId)),
+  };
 };

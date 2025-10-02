@@ -1,6 +1,6 @@
 ﻿import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useLocation, useNavigate, type Location } from "react-router-dom";
+import { useLocation, useNavigate, type Location } from "react-router-dom";
 import { login, signup, type LoginPayload, type SignupPayload } from "../api/auth";
 import { useAuth } from "../hooks/useAuth";
 
@@ -194,11 +194,6 @@ const AuthPage = () => {
               </button>
             </>
           )}
-        </p>
-        <p className="text-center text-xs text-slate-500">
-          <Link className="underline" to="/">
-            Back to home
-          </Link>
         </p>
       </div>
     </div>

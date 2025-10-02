@@ -1,6 +1,7 @@
 ﻿import type { Request, Response } from "express";
 import type { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { createChirp, getChirpById, getFeed, getUserChirps } from "../services/chirpService";
+import { tryGetViewerId } from "../utils/viewer";
 
 export const createChirpHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -29,9 +30,10 @@ export const createChirpHandler = async (req: AuthenticatedRequest, res: Respons
 
 export const getFeedHandler = async (req: Request, res: Response) => {
   try {
+    const viewerId = tryGetViewerId(req.headers.authorization);
     const limitParam = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
     const limit = limitParam ? Number.parseInt(limitParam, 10) : 20;
-    const chirps = await getFeed(limit);
+    const chirps = await getFeed(limit, viewerId);
     res.json({ chirps });
   } catch (error) {
     const status = (error as Error & { status?: number }).status ?? 500;
@@ -41,7 +43,8 @@ export const getFeedHandler = async (req: Request, res: Response) => {
 
 export const getChirpHandler = async (req: Request, res: Response) => {
   try {
-    const chirp = await getChirpById(req.params.chirpId);
+    const viewerId = tryGetViewerId(req.headers.authorization);
+    const chirp = await getChirpById(req.params.chirpId, viewerId);
     res.json({ chirp });
   } catch (error) {
     const status = (error as Error & { status?: number }).status ?? 500;
@@ -51,7 +54,8 @@ export const getChirpHandler = async (req: Request, res: Response) => {
 
 export const getUserChirpsHandler = async (req: Request, res: Response) => {
   try {
-    const profile = await getUserChirps(req.params.username);
+    const viewerId = tryGetViewerId(req.headers.authorization);
+    const profile = await getUserChirps(req.params.username, viewerId);
     res.json({ profile });
   } catch (error) {
     const status = (error as Error & { status?: number }).status ?? 500;

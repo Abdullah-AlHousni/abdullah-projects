@@ -18,8 +18,16 @@ export const Layout = ({ children }: PropsWithChildren) => {
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-          <Link to="/" className="text-xl font-bold text-primary">
-            Chirp
+          <Link to="/" className="flex items-center gap-2 text-xl font-bold text-primary">
+            <img
+              src="/chirp_logo.png"
+              alt="Chirp logo"
+              className="h-10 w-10 rounded-full border border-primary/40 bg-slate-950 object-cover"
+              onError={(event) => {
+                (event.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
+            <span>Chirp</span>
           </Link>
           <nav className="flex items-center gap-2">
             <NavLink to="/" className={navLinkClass} end>

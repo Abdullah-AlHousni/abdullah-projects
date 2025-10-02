@@ -113,6 +113,10 @@ CHIRP/
    ```
    The SPA is served at `http://localhost:5173`.
 
+4. **Branding asset (optional)**
+   - Place your logo at `frontend/public/chirp_logo.png`.
+   - The header automatically displays the image (with ALT text fallback) and the browser tab uses it as the favicon.
+
 ### Frontend Highlights
 
 - Protected feed requires login, but profile pages are public.
