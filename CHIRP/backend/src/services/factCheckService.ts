@@ -1,7 +1,9 @@
 ﻿import { Prisma } from "@prisma/client";
+import env from "../config/env";
 import prisma from "../config/prisma";
 import { fetchEvidenceFromWikipedia } from "./wikiService";
 import { runFactCheckWithGemini } from "./geminiService";
+import { factCheckDirect } from "../lib/llm/gemini";
 import type { FactCheckVerdict } from "../types/factCheck";
 
 const nonFactualKeywords = [
@@ -14,6 +16,24 @@ const nonFactualKeywords = [
   "joke",
   "poem",
   "haiku",
+  "song",
+  "story",
+];
+
+const reputablePatterns = [
+  /wikipedia\.org/i,
+  /\.(gov|mil)(\.|\b)/i,
+  /\.(edu)(\.|\b)/i,
+  /reuters\.com/i,
+  /apnews\.com/i,
+  /npr\.org/i,
+  /bbc\.co\.uk/i,
+  /bbc\.com/i,
+  /nytimes\.com/i,
+  /washingtonpost\.com/i,
+  /wsj\.com/i,
+  /bloomberg\.com/i,
+  /theguardian\.com/i,
 ];
 
 const isLikelyOpinion = (content: string) => {
@@ -21,8 +41,61 @@ const isLikelyOpinion = (content: string) => {
   return lower.length < 30 || nonFactualKeywords.some((keyword) => lower.includes(keyword));
 };
 
-const formatCitations = (citations: string[]) =>
-  citations.length > 0 ? (citations.slice(0, 4) as Prisma.JsonArray) : Prisma.JsonNull;
+const normalizeCitations = (citations: string[] | undefined) => {
+  if (!Array.isArray(citations)) return Prisma.JsonNull;
+  const trimmed = citations
+    .filter((url) => typeof url === "string" && url.trim().length > 0)
+    .slice(0, 4);
+  return trimmed.length > 0 ? (trimmed as Prisma.JsonArray) : Prisma.JsonNull;
+};
+
+const hasReputableCitation = (citations: string[]): boolean => {
+  return citations.some((url) => {
+    try {
+      const hostname = new URL(url).hostname;
+      return reputablePatterns.some((pattern) => pattern.test(hostname));
+    } catch (error) {
+      return false;
+    }
+  });
+};
+
+const downgradeIfNeeded = (
+  result: { verdict: FactCheckVerdict; confidence: number; summary: string; citations: string[] },
+): { verdict: FactCheckVerdict; confidence: number; summary: string; citations: string[] } => {
+  if (result.verdict === "VERIFIED" || result.verdict === "DISPUTED") {
+    if (result.citations.length === 0 || !hasReputableCitation(result.citations)) {
+      return {
+        verdict: "INSUFFICIENT_EVIDENCE",
+        confidence: Math.min(result.confidence, 0.4),
+        summary: "No reputable sources were provided to support or dispute this claim.",
+        citations: [],
+      };
+    }
+  }
+  return result;
+};
+
+const runDirectFactCheck = async (claim: string) => {
+  const llmResult = await factCheckDirect({ claim });
+  return downgradeIfNeeded(llmResult);
+};
+
+const runLegacyFactCheck = async (claim: string) => {
+  const snippets = await fetchEvidenceFromWikipedia(claim);
+
+  if (snippets.length === 0) {
+    return {
+      verdict: "INSUFFICIENT_EVIDENCE" as FactCheckVerdict,
+      confidence: 0.3,
+      summary: "No relevant Wikipedia evidence was found for this claim.",
+      citations: [],
+    };
+  }
+
+  const llmResult = await runFactCheckWithGemini(claim, snippets);
+  return downgradeIfNeeded(llmResult);
+};
 
 const processFactCheck = async (factCheckId: string) => {
   try {
@@ -49,7 +122,7 @@ const processFactCheck = async (factCheckId: string) => {
           status: "DONE",
           verdict: "NEEDS_CONTEXT",
           confidence: 0.5,
-          summary: "This statement reads as opinion or humour rather than a factual claim.",
+          summary: "This statement reads as opinion, humour, or creative expression rather than a factual claim.",
           citationsJson: Prisma.JsonNull,
           checkedAt: new Date(),
         },
@@ -57,33 +130,20 @@ const processFactCheck = async (factCheckId: string) => {
       return;
     }
 
-    const snippets = await fetchEvidenceFromWikipedia(claim);
-
-    if (snippets.length === 0) {
-      await prisma.factCheck.update({
-        where: { id: factCheckId },
-        data: {
-          status: "DONE",
-          verdict: "INSUFFICIENT_EVIDENCE",
-          confidence: 0.3,
-          summary: "No relevant Wikipedia evidence was found for this claim.",
-          citationsJson: Prisma.JsonNull,
-          checkedAt: new Date(),
-        },
-      });
-      return;
-    }
-
-    const llmResult = await runFactCheckWithGemini(claim, snippets);
+    const mode = env.FACTCHECK_MODE ?? "direct";
+    const result =
+      mode === "legacy"
+        ? await runLegacyFactCheck(claim)
+        : await runDirectFactCheck(claim);
 
     await prisma.factCheck.update({
       where: { id: factCheckId },
       data: {
         status: "DONE",
-        verdict: llmResult.verdict as FactCheckVerdict,
-        confidence: llmResult.confidence,
-        summary: llmResult.summary,
-        citationsJson: formatCitations(llmResult.citations),
+        verdict: result.verdict,
+        confidence: result.confidence,
+        summary: result.summary,
+        citationsJson: normalizeCitations(result.citations),
         checkedAt: new Date(),
       },
     });

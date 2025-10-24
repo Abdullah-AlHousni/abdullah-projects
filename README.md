@@ -1,6 +1,6 @@
 ﻿# Chirp MVP
 
-Chirp is a social media MVP where users can sign up, share 280-character updates, attach optimized media, and engage with likes, comments, rechirps (retweets), and fact checks. The stack is a TypeScript Express API (PostgreSQL + Prisma + AWS S3) paired with a React + Tailwind frontend powered by React Query.
+Chirp is a social media MVP where users can sign up, share 280-character updates, attach optimized media, and engage with likes, comments, rechirps (retweets), and fact checks. The stack is a TypeScript Express API (PostgreSQL + Prisma + AWS S3 + Gemini) paired with a React + Tailwind frontend powered by React Query.
 
 ## Repository Layout
 
@@ -39,6 +39,7 @@ CHIRP/
    - `FRONTEND_ORIGIN` – e.g. `http://localhost:5173`
    - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_BUCKET_NAME` – credentials for S3 media storage
    - `GEMINI_API_KEY` – Google AI Studio API key (Gemini 1.5 Flash)
+   - `FACTCHECK_MODE` – `direct` (Gemini-only, default) or `legacy` (Wikipedia + Gemini)
 
 3. **Apply database schema**
    ```bash
@@ -52,15 +53,15 @@ CHIRP/
    ```
    The server listens on `http://localhost:4000` with a `/health` probe.
 
-### Media & Fact-Check Pipeline
+### Fact-Check Pipeline
 
 - `/upload` accepts media (≤20 MB) from authenticated users, optimises via Sharp (images) or FFmpeg (videos), and uploads to S3.
 - Each chirp can request one fact check via `/api/factcheck/:chirpId`. Fact checks:
-  1. Gate obviously subjective content.
-  2. Pull up to 3 snippets from Wikipedia REST APIs.
-  3. Call Gemini (strict JSON output) to determine verdict (`VERIFIED`, `DISPUTED`, `NEEDS_CONTEXT`, `INSUFFICIENT_EVIDENCE`).
-  4. Store verdict, confidence, summary, and citations in `fact_checks` table.
-  5. Cache results—subsequent POST requests simply return the stored record.
+  1. Gate obviously subjective content → `NEEDS_CONTEXT`.
+  2. **Direct mode (default):** Send claim only to Gemini for judgment. Citations are mandatory—verdicts without reputable URLs downgrade to `INSUFFICIENT_EVIDENCE`.
+  3. **Legacy mode:** Existing Wikipedia retrieval + Gemini adjudication (toggle via `FACTCHECK_MODE=legacy`).
+  4. Save verdict, confidence, summary, citations, timestamps in `fact_checks`.
+  5. Cache results—subsequent POSTs reuse the stored record.
 
 ### Key API Routes
 
@@ -69,7 +70,7 @@ CHIRP/
 | POST   | `/auth/signup`                             | Create a new user account                            |
 | POST   | `/auth/login`                              | Exchange credentials for a JWT                       |
 | GET    | `/auth/me`                                 | Fetch the authenticated user                         |
-| POST   | `/upload`                                  | Upload/optimise media → returns `{ url, mediaType }` |
+| POST   | `/upload`                                  | Upload/optimise media → `{ url, mediaType }`         |
 | POST   | `/chirps`                                  | Publish a chirp with optional `mediaUrl/mediaType`   |
 | GET    | `/chirps/feed`                             | Latest chirps (reverse chronological)                |
 | GET    | `/chirps/:chirpId`                         | Single chirp with comments                           |
@@ -124,14 +125,14 @@ CHIRP/
 ### PostgreSQL (Render managed Postgres example)
 1. Provision the database and copy the `postgresql://` URI (append `?sslmode=require`).
 2. Set `DATABASE_URL` in the backend environment.
-3. Run migrations: `npx prisma migrate deploy`.
+3. Deploy migrations: `npx prisma migrate deploy`.
 4. Optional: `npx prisma studio` to inspect data.
 
 ### Backend (Render)
 - Build command: `npm install && npm run build`
 - Start command: `npm run start`
-- Environment variables: `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_ORIGIN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_BUCKET_NAME`, `GEMINI_API_KEY`
-- Ensure outbound access to S3 and the database.
+- Environment variables: `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_ORIGIN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_BUCKET_NAME`, `GEMINI_API_KEY`, `FACTCHECK_MODE`
+- Ensure the compute environment has permission to write to S3, call Gemini, and reach Postgres.
 
 ### Frontend (Vercel)
 - Root directory: `/frontend`
@@ -144,15 +145,15 @@ CHIRP/
 ## Testing Tips
 
 ### Postman / Hoppscotch
-1. Authenticate with `POST /auth/login` and store the JWT.
-2. Upload media via `POST /upload` (form-data `file`).
-3. Post a chirp with `POST /chirps` including the `mediaUrl` & `mediaType`.
+1. Authenticate once with `POST /auth/login` and store the bearer token.
+2. Upload an image via `POST /upload` (form-data field `file`). Response returns the S3 URL.
+3. Post a chirp with `POST /chirps` using JSON.
 4. Trigger fact check via `POST /api/factcheck/:chirpId`, then poll `GET /api/factcheck/:chirpId` until `status` is `DONE` or `ERROR`.
 
 ### Local E2E Smoke Test
 1. Run `npm run dev` in `/backend`.
 2. Run `npm run dev` in `/frontend`.
-3. Create an account, post a chirp with media, and watch the fact-check badge transition states.
+3. Create an account, upload a chirp with media, and watch the fact-check badge transition states.
 4. Confirm summary and citations render correctly once processing completes.
 
 ---

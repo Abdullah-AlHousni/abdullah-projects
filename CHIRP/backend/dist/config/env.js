@@ -15,6 +15,7 @@ const envSchema = zod_1.z.object({
     AWS_REGION: zod_1.z.string().min(1, "AWS_REGION is required"),
     AWS_BUCKET_NAME: zod_1.z.string().min(1, "AWS_BUCKET_NAME is required"),
     GEMINI_API_KEY: zod_1.z.string().min(1, "GEMINI_API_KEY is required"),
+    FACTCHECK_MODE: zod_1.z.enum(["direct", "legacy"]).default("direct"),
 });
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {
