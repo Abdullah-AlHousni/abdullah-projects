@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const chirpController_1 = require("../controllers/chirpController");
+const authMiddleware_1 = require("../middleware/authMiddleware");
+const router = (0, express_1.Router)();
+router.get("/feed", chirpController_1.getFeedHandler);
+router.get("/user/:username", chirpController_1.getUserChirpsHandler);
+router.get("/:chirpId", chirpController_1.getChirpHandler);
+router.post("/", authMiddleware_1.authenticate, chirpController_1.createChirpHandler);
+exports.default = router;

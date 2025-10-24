@@ -7,6 +7,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum FactCheckStatus {
+  PENDING
+  RUNNING
+  DONE
+  ERROR
+}
+
+enum FactCheckVerdict {
+  VERIFIED
+  DISPUTED
+  NEEDS_CONTEXT
+  INSUFFICIENT_EVIDENCE
+}
+
 model User {
   id           String    @id @default(cuid())
   email        String    @unique
@@ -22,17 +36,18 @@ model User {
 }
 
 model Chirp {
-  id        String    @id @default(cuid())
-  content   String    @db.VarChar(280)
+  id        String     @id @default(cuid())
+  content   String     @db.VarChar(280)
   mediaUrl  String?
   mediaType String?
-  author    User      @relation(fields: [authorId], references: [id])
+  author    User       @relation(fields: [authorId], references: [id])
   authorId  String
+  factCheck FactCheck?
   likes     Like[]
   comments  Comment[]
   retweets  Retweet[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 model Like {
@@ -66,4 +81,18 @@ model Retweet {
   createdAt DateTime @default(now())
 
   @@unique([userId, chirpId])
+}
+
+model FactCheck {
+  id            String            @id @default(cuid())
+  chirp         Chirp             @relation(fields: [chirpId], references: [id])
+  chirpId       String            @unique
+  status        FactCheckStatus   @default(PENDING)
+  verdict       FactCheckVerdict?
+  confidence    Float?
+  summary       String?           @db.Text
+  citationsJson Json?
+  checkedAt     DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 }

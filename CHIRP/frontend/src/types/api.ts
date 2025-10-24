@@ -12,6 +12,22 @@ export interface ChirpCounts {
   retweets: number;
 }
 
+export type FactCheckStatus = "PENDING" | "RUNNING" | "DONE" | "ERROR";
+export type FactCheckVerdict = "VERIFIED" | "DISPUTED" | "NEEDS_CONTEXT" | "INSUFFICIENT_EVIDENCE";
+
+export interface FactCheck {
+  id: string;
+  chirpId: string;
+  status: FactCheckStatus;
+  verdict?: FactCheckVerdict | null;
+  confidence?: number | null;
+  summary?: string | null;
+  citationsJson?: string[] | null;
+  checkedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Chirp {
   id: string;
   content: string;

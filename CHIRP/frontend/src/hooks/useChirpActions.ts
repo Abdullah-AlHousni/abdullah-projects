@@ -7,6 +7,7 @@ import {
   undoRechirp,
   unlikeChirp,
 } from "../api/chirps";
+import { requestFactCheck } from "../api/factchecks";
 import type { Chirp, CreateChirpPayload, Profile, Comment } from "../types/api";
 
 const updateChirpCaches = (
@@ -54,7 +55,7 @@ export const useCreateChirpMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateChirpPayload) => createChirp(payload),
-    onSuccess: (newChirp) => {
+    onSuccess: async (newChirp) => {
       const enriched: Chirp = {
         ...newChirp,
         viewerHasLiked: false,
@@ -80,6 +81,11 @@ export const useCreateChirpMutation = () => {
             };
           });
         });
+
+      // Fire and forget: request a fact check for the new chirp.
+      requestFactCheck(newChirp.id).catch((error) => {
+        console.warn("Failed to schedule fact check", error);
+      });
     },
   });
 };

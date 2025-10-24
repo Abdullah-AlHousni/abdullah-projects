@@ -13,6 +13,7 @@ const envSchema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string().min(1, "AWS_SECRET_ACCESS_KEY is required"),
   AWS_REGION: z.string().min(1, "AWS_REGION is required"),
   AWS_BUCKET_NAME: z.string().min(1, "AWS_BUCKET_NAME is required"),
+  GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
 });
 
 const parsed = envSchema.safeParse(process.env);

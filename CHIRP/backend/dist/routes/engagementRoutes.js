@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const engagementController_1 = require("../controllers/engagementController");
+const authMiddleware_1 = require("../middleware/authMiddleware");
+const router = (0, express_1.Router)();
+router.post("/chirps/:chirpId/like", authMiddleware_1.authenticate, engagementController_1.likeChirpHandler);
+router.delete("/chirps/:chirpId/like", authMiddleware_1.authenticate, engagementController_1.unlikeChirpHandler);
+router.post("/chirps/:chirpId/comments", authMiddleware_1.authenticate, engagementController_1.commentChirpHandler);
+router.get("/chirps/:chirpId/comments", authMiddleware_1.authenticate, engagementController_1.getCommentsHandler);
+router.post("/chirps/:chirpId/rechirp", authMiddleware_1.authenticate, engagementController_1.rechirpChirpHandler);
+router.delete("/chirps/:chirpId/rechirp", authMiddleware_1.authenticate, engagementController_1.undoRechirpHandler);
+exports.default = router;

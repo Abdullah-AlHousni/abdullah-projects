@@ -7,6 +7,7 @@ import chirpRoutes from "./routes/chirpRoutes";
 import engagementRoutes from "./routes/engagementRoutes";
 import profileRoutes from "./routes/profileRoutes";
 import uploadRoutes from "./routes/uploadRoutes";
+import factCheckRoutes from "./routes/factCheckRoutes";
 import errorHandler from "./middleware/errorHandler";
 
 const app = express();
@@ -30,6 +31,7 @@ app.use("/chirps", chirpRoutes);
 app.use("/engagements", engagementRoutes);
 app.use("/profiles", profileRoutes);
 app.use("/upload", uploadRoutes);
+app.use("/api/factcheck", factCheckRoutes);
 
 app.use(errorHandler);
 
