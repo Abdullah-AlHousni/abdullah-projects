@@ -3,8 +3,13 @@
 const GEMINI_MODEL = "gemini-1.5-flash";
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`;
 
-const systemPrompt =
-  "You are a careful, evidence-based fact-checking assistant. Use knowledge you are confident about and never invent citations. If unsure, return INSUFFICIENT_EVIDENCE or NEEDS_CONTEXT. Output strict JSON only.";
+const systemPrompt = [
+  "You are a careful, evidence-based fact-checking assistant.",
+  "Prefer to cite reputable sources (.gov, .edu, Wikipedia, major news) when possible.",
+  "If you cannot find an exact source but the fact is widely established common knowledge, you may still use \"VERIFIED\" or \"DISPUTED\" with lower confidence (≤ 0.6).",
+  "Use \"INSUFFICIENT_EVIDENCE\" only when the claim is very obscure or no information is available.",
+  "If unsure, return INSUFFICIENT_EVIDENCE or NEEDS_CONTEXT. Output strict JSON only.",
+].join(" ");
 
 interface DirectFactCheckInput {
   claim: string;
