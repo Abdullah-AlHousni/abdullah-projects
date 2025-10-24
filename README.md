@@ -1,12 +1,12 @@
 ﻿# Chirp MVP
 
-Chirp is a social media MVP where users can sign up, share 280-character updates, attach optimized media, and engage with likes, comments, and rechirps (retweets). The stack is a TypeScript Express API (PostgreSQL + Prisma + AWS S3) paired with a React + Tailwind frontend powered by React Query.
+Chirp is a social media MVP where users can sign up, share 280-character updates, attach optimized media, and engage with likes, comments, rechirps (retweets), and fact checks. The stack is a TypeScript Express API (PostgreSQL + Prisma + AWS S3) paired with a React + Tailwind frontend powered by React Query.
 
 ## Repository Layout
 
 ```
 CHIRP/
-├─ backend/        # Express API, Prisma schema, media pipeline (Sharp + FFmpeg + S3)
+├─ backend/        # Express API, Prisma schema, media & fact-check pipeline
 ├─ frontend/       # React app with Tailwind, React Router, React Query
 └─ README.md       # Project guide
 ```
@@ -15,8 +15,9 @@ CHIRP/
 
 - Node.js 20+
 - npm 10+
-- PostgreSQL 14+ (local install or managed instance)
+- PostgreSQL 14+ (local install or managed instance e.g. Render, Supabase)
 - AWS account with an S3 bucket (Object Ownership: Bucket owner enforced, or equivalent policy)
+- Google AI Studio API key (Gemini) for fact checking
 
 ---
 
@@ -32,21 +33,18 @@ CHIRP/
    ```bash
    cp .env.example .env
    ```
-   Update the new `.env` with:
-   - `DATABASE_URL` – PostgreSQL connection string
+   Required keys:
+   - `DATABASE_URL` – PostgreSQL connection string (append `?sslmode=require` for managed hosts)
    - `JWT_SECRET` – long random string
    - `FRONTEND_ORIGIN` – e.g. `http://localhost:5173`
-   - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` – IAM credentials with S3 write access
-   - `AWS_REGION` – e.g. `us-east-1`
-   - `AWS_BUCKET_NAME` – bucket for media (`chirp-media` by default)
-
-   > **Note:** If your bucket enforces "Bucket owner enforced" object ownership (recommended), set a bucket policy that grants public `s3:GetObject` and allows the IAM principal to `s3:PutObject`. Object ACLs are not used.
+   - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_BUCKET_NAME` – credentials for S3 media storage
+   - `GEMINI_API_KEY` – Google AI Studio API key (Gemini 1.5 Flash)
 
 3. **Apply database schema**
    ```bash
-   npx prisma migrate dev --name add-media-fields
+   npx prisma migrate dev --name add_fact_checks
    ```
-   (Use a different migration name if you already ran earlier migrations.)
+   Use `npx prisma migrate deploy` when targeting production databases.
 
 4. **Run the API**
    ```bash
@@ -54,14 +52,15 @@ CHIRP/
    ```
    The server listens on `http://localhost:4000` with a `/health` probe.
 
-### Media Pipeline Details
+### Media & Fact-Check Pipeline
 
-- Uploads hit `POST /upload` (authenticated).
-- Files are received via Multer (memory storage) with a strict 20 MB size cap.
-- Images are resized to max 1080px width and converted to WebP (~70% quality) using Sharp.
-- Videos are transcoded to MP4 (H.264 + AAC, max 720p) via FFmpeg with fast-start enabled.
-- Optimized buffers are stored in S3 with unique keys (`chirps/<timestamp>-<uuid>.<ext>`).
-- The S3 URL and media type are returned to the client and saved on the `Chirp` record (`mediaUrl`, `mediaType`).
+- `/upload` accepts media (≤20 MB) from authenticated users, optimises via Sharp (images) or FFmpeg (videos), and uploads to S3.
+- Each chirp can request one fact check via `/api/factcheck/:chirpId`. Fact checks:
+  1. Gate obviously subjective content.
+  2. Pull up to 3 snippets from Wikipedia REST APIs.
+  3. Call Gemini (strict JSON output) to determine verdict (`VERIFIED`, `DISPUTED`, `NEEDS_CONTEXT`, `INSUFFICIENT_EVIDENCE`).
+  4. Store verdict, confidence, summary, and citations in `fact_checks` table.
+  5. Cache results—subsequent POST requests simply return the stored record.
 
 ### Key API Routes
 
@@ -82,14 +81,8 @@ CHIRP/
 | POST   | `/engagements/chirps/:id/rechirp`          | Rechirp a chirp                                      |
 | DELETE | `/engagements/chirps/:id/rechirp`          | Undo a rechirp                                       |
 | GET    | `/profiles/:username`                      | Public profile with chirps and media                 |
-
-### Useful Commands
-
-- `npm run dev` – watch-mode server
-- `npm run build` – produce production build (`dist/`)
-- `npm run start` – run the compiled server
-- `npm run prisma:generate` – regenerate Prisma client
-- `npx prisma studio` – inspect data via Prisma Studio
+| POST   | `/api/factcheck/:chirpId`                  | Schedule a fact check for the chirp (idempotent)     |
+| GET    | `/api/factcheck/:chirpId`                  | Fetch the current fact-check record for the chirp    |
 
 ---
 
@@ -105,7 +98,7 @@ CHIRP/
    ```bash
    cp .env.example .env
    ```
-   - `VITE_API_BASE_URL` – usually `http://localhost:4000`
+   - `VITE_API_BASE_URL` – e.g. `http://localhost:4000`
 
 3. **Run Vite**
    ```bash
@@ -115,34 +108,30 @@ CHIRP/
 
 4. **Branding asset (optional)**
    - Place your logo at `frontend/public/chirp_logo.png`.
-   - The header automatically displays the image (with ALT text fallback) and the browser tab uses it as the favicon.
+   - The header displays it automatically and the favicon uses the same file.
 
 ### Frontend Highlights
 
-- Protected feed requires login, but profile pages are public.
-- The composer supports image/video selection with live preview and size validation (≤20 MB).
-- On submit the UI uploads media to `/upload`, receives the S3 URL, and posts the chirp with `mediaUrl/mediaType`.
-- Feed/profile cards display media responsively (`<img>` or `<video>`), update counts instantly, and keep engagement highlights in sync via React Query cache updates.
+- Feed and profile pages display fact-check badges for every chirp.
+- Badges show live state (Unverified, Checking, Verified, Disputed, Needs Context, Insufficient Evidence, Error).
+- Clicking the badge opens a modal with summary, confidence, and citations. Unverified chirps can trigger a fact check on demand.
+- After posting a chirp, the composer automatically schedules a fact check and the UI polls until completion.
 
 ---
 
 ## Deployment Notes
 
-### PostgreSQL (Supabase / Railway)
-1. Provision a database and grab the connection string.
+### PostgreSQL (Render managed Postgres example)
+1. Provision the database and copy the `postgresql://` URI (append `?sslmode=require`).
 2. Set `DATABASE_URL` in the backend environment.
-3. Deploy migrations:
-   ```bash
-   cd backend
-   npx prisma migrate deploy
-   ```
-4. Optionally tunnel into the DB to inspect data with Prisma Studio.
+3. Run migrations: `npx prisma migrate deploy`.
+4. Optional: `npx prisma studio` to inspect data.
 
-### Backend (Render / Railway / AWS ECS, etc.)
+### Backend (Render)
 - Build command: `npm install && npm run build`
 - Start command: `npm run start`
-- Required environment variables: `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_ORIGIN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_BUCKET_NAME`
-- Ensure the compute environment has permission to write to S3, and the bucket policy allows public `GetObject` if you need public URLs.
+- Environment variables: `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_ORIGIN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_BUCKET_NAME`, `GEMINI_API_KEY`
+- Ensure outbound access to S3 and the database.
 
 ### Frontend (Vercel)
 - Root directory: `/frontend`
@@ -155,32 +144,25 @@ CHIRP/
 ## Testing Tips
 
 ### Postman / Hoppscotch
-1. Authenticate once with `POST /auth/login` and store the bearer token.
-2. Upload an image via `POST /upload` (form-data field `file`). Response returns the S3 URL.
-3. Post a chirp with `POST /chirps` using JSON:
-   ```json
-   {
-     "content": "Hello Chirp!",
-     "mediaUrl": "https://<bucket>.s3.amazonaws.com/chirps/...",
-     "mediaType": "image"
-   }
-   ```
-4. Verify it appears in `GET /chirps/feed` and `GET /profiles/<username>`.
+1. Authenticate with `POST /auth/login` and store the JWT.
+2. Upload media via `POST /upload` (form-data `file`).
+3. Post a chirp with `POST /chirps` including the `mediaUrl` & `mediaType`.
+4. Trigger fact check via `POST /api/factcheck/:chirpId`, then poll `GET /api/factcheck/:chirpId` until `status` is `DONE` or `ERROR`.
 
 ### Local E2E Smoke Test
 1. Run `npm run dev` in `/backend`.
 2. Run `npm run dev` in `/frontend`.
-3. Create an account, upload an image/video, confirm the preview, post, and ensure the media renders in the feed/profile.
-4. Exercise likes, comments, and rechirps to confirm counters stay in sync when navigating between feed and profile.
+3. Create an account, post a chirp with media, and watch the fact-check badge transition states.
+4. Confirm summary and citations render correctly once processing completes.
 
 ---
 
 ## Next Steps / Enhancements
 
-- Add viewer-specific flags from the API (`viewerHasLiked`, `viewerHasRechirped`) instead of computing on the client.
-- Support animated GIF to MP4 conversion explicitly.
-- Add background jobs for further media optimisation / thumbnailing.
-- Introduce rate limiting and request logging (e.g. pino + AWS CloudWatch).
-- Build automated tests (Jest + Supertest for API, Vitest + RTL for UI).
+- Push fact-check jobs to a true background worker if latency becomes an issue.
+- Expand heuristics for non-factual content and add manual override tools.
+- Display fact-check history when manual rechecks are added.
+- Add monitoring/alerting around external API failures (Gemini/Wikipedia).
+- Build automated API/UI tests to exercise fact-check flows end-to-end.
 
 Happy chirping! 🐦
