@@ -83,8 +83,8 @@ const generateWithModel = async (
 
 const resolveModelAndGenerate = async (prompt: string, signal: AbortSignal): Promise<string> => {
   const candidates: string[] = [];
-  if (env as any).GEMINI_MODEL) {
-    candidates.push((env as any).GEMINI_MODEL as string);
+  if ((env as any).GEMINI_MODEL) {
+    candidates.push(((env as any).GEMINI_MODEL as string));
   }
   if (!cachedModel) {
     const latest = await tryListLatestFlash();
