@@ -1,6 +1,6 @@
-﻿# Chirp MVP
+﻿# [Chirp](https://chirps-project.vercel.app/) MVP
 
-Chirp is a social media MVP where users can sign up, share 280-character updates, attach optimized media, and engage with likes, comments, rechirps (retweets), and fact checks. The stack is a TypeScript Express API (PostgreSQL + Prisma + AWS S3 + Gemini) paired with a React + Tailwind frontend powered by React Query.
+Chirp is a social media MVP (Mini Twitter/X) where users can sign up, share 280-character updates, attach optimized media, and engage with likes, comments, rechirps (retweets), and fact checks. The stack is a TypeScript Express API (PostgreSQL + Prisma + AWS S3 + Gemini) paired with a React + Tailwind frontend powered by React Query. Try it out @ [Chirp](https://chirps-project.vercel.app/)
 
 ## Repository Layout
 
